@@ -1,1 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Dictionary Lookup (Simple Audio)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: sans-serif; margin: 2rem; line-height: 1.4; }
+    input, button { font-size: 1rem; padding: 0.5rem; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+    .muted { color: #666; }
+    .play-btn { background: #0077aa; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; margin-left: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Dictionary Lookup</h1>
+  <form id="lookupForm">
+    <input id="wordInput" type="text" placeholder="Enter a word" required />
+    <button type="submit">Search</button>
+  </form>
 
+  <div id="results"></div>
+
+  <script>
+    const form = document.getElementById('lookupForm');
+    const input = document.getElementById('wordInput');
+    const results = document.getElementById('results');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const word = input.value.trim();
+      if (!word) return;
+      results.innerHTML = "<p class='muted'>Loading...</p>";
+
+      try {
+        const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+        if (!response.ok) throw new Error("Word not found");
+        const data = await response.json();
+        displayResult(data[0]);
+      } catch (err) {
+        results.innerHTML = `<p class='muted'>${err.message}</p>`;
+      }
+    });
+
+    function displayResult(item) {
+      results.innerHTML = "";
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <h2>${item.word}</h2>
+        <p class="muted">${item.phonetic || ''}</p>
+        <p>${item.origin || ''}</p>
+      `;
+
+      // Audio button
+      const audioUrl = item.phonetics.find(p => p.audio)?.audio;
+      if (audioUrl) {
+        const button = document.createElement('button');
+        button.textContent = "Play Audio";
+        button.className = 'play-btn';
+        const audio = new Audio(audioUrl.startsWith('//') ? 'https:' + audioUrl : audioUrl);
+        button.addEventListener('click', () => audio.play());
+        card.appendChild(button);
+      }
+
+      // Meanings
+      item.meanings.forEach(m => {
+        const section = document.createElement('div');
+        section.innerHTML = `<h3>${m.partOfSpeech}</h3>`;
+        m.definitions.forEach(d => {
+          section.innerHTML += `<p>${d.definition}</p>`;
+          if (d.example) section.innerHTML += `<p class="muted">“${d.example}”</p>`;
+        });
+        card.appendChild(section);
+      });
+
+      results.appendChild(card);
+    }
+  </script>
+</body>
+</html>
